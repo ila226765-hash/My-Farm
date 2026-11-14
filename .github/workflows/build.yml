@@ -1,0 +1,80 @@
+name: Build APK
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+      - name: Create Android project
+        run: |
+          f=$(ls *.html | head -1)
+          mkdir -p proj/app/src/main/assets proj/app/src/main/java/com/moyaferma/game
+          cp "$f" proj/app/src/main/assets/index.html
+          cd proj
+          cat > build.gradle <<'EOF1'
+          plugins { id 'com.android.application' version '8.6.1' apply false }
+          EOF1
+          cat > settings.gradle <<'EOF2'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+          rootProject.name = 'MoyaFerma'
+          include ':app'
+          EOF2
+          echo "org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8" > gradle.properties
+          cat > app/build.gradle <<'EOF3'
+          plugins { id 'com.android.application' }
+          android {
+              namespace 'com.moyaferma.game'
+              compileSdk 35
+              defaultConfig { applicationId 'com.moyaferma.game'; minSdk 23; targetSdk 28; versionCode 1; versionName '1.5' }
+          }
+          EOF3
+          cat > app/src/main/AndroidManifest.xml <<'EOF4'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="Моя ферма">
+                  <activity android:name=".MainActivity" android:screenOrientation="portrait" android:exported="true">
+                      <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF4
+          cat > app/src/main/java/com/moyaferma/game/MainActivity.java <<'EOF5'
+          package com.moyaferma.game;
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import android.view.Window;
+          import android.view.WindowManager;
+          public class MainActivity extends Activity {
+            @Override public void onCreate(Bundle b) {
+              super.onCreate(b);
+              requestWindowFeature(Window.FEATURE_NO_TITLE);
+              getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+              WebView web = new WebView(this);
+              web.setWebViewClient(new WebViewClient());
+              WebSettings s = web.getSettings();
+              s.setJavaScriptEnabled(true);
+              s.setDomStorageEnabled(true);
+              s.setMediaPlaybackRequiresUserGesture(false);
+              web.setBackgroundColor(0xff243b2b);
+              setContentView(web);
+              web.loadUrl("file:///android_asset/index.html");
+            }
+          }
+          EOF5
+      - name: Build
+        run: cd proj && gradle assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MoyaFerma-apk
+          path: proj/app/build/outputs/apk/debug/app-debug.apk
