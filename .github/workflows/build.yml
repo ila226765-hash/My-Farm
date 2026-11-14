@@ -33,7 +33,7 @@ jobs:
           android {
               namespace 'com.moyaferma.game'
               compileSdk 35
-              defaultConfig { applicationId 'com.moyaferma.game'; minSdk 23; targetSdk 28; versionCode 1; versionName '1.5' }
+              defaultConfig { applicationId 'com.moyaferma.game'; minSdk 23; targetSdk 34; versionCode 1; versionName '1.5' }
           }
           EOF3
           cat > app/src/main/AndroidManifest.xml <<'EOF4'
